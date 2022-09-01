@@ -11,3 +11,8 @@ sys.path.append(f"{SOURCE_PATH}")
 
 # move to test directory
 os.chdir("./purus")
+
+
+@pytest.fixture
+def path_test_root():
+    yield f"{SOURCE_PATH}/test"
