@@ -38,6 +38,8 @@ class TestAmazonCloudFront:
         assert lambda_edge.request.get_header(key="accept").key == "accept"
         assert lambda_edge.request.get_header(key="accept").value == "*/*"
         assert lambda_edge.request.get_header(key="Not-Exist") is None
+        # check format() output
+        assert request == lambda_edge.format()
 
     def test_origin_request(self, path_amazon_cloudfront: str):
 
@@ -84,3 +86,5 @@ class TestAmazonCloudFront:
         assert lambda_edge.request.origin.ssl_protocols == ["TLSv1", "TLSv1.1", "TLSv1.2"]
         assert lambda_edge.request.origin.custom_headers == []
         assert lambda_edge.request.origin.domain_name == "example.org"
+        # check format() output
+        assert request == lambda_edge.format()

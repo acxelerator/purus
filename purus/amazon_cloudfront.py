@@ -20,6 +20,14 @@ class CloudFrontLambdaEdgeConfig:
             request_id=data["requestId"],
         )
 
+    def format(self) -> dict:
+        return {
+            "distributionDomainName": self.distribution_domain_name,
+            "distributionId": self.distribution_id,
+            "eventType": self.event_type,
+            "requestId": self.request_id,
+        }
+
 
 @dataclass(frozen=True)
 class CloudFrontLambdaEdgeHeader:
@@ -75,6 +83,14 @@ class CloudFrontLambdaEdgeHeader:
     def from_dict(data: dict) -> List["CloudFrontLambdaEdgeHeader"]:
         return [CloudFrontLambdaEdgeHeader.from_key_value(key=k, value=v) for k, v in data.items()]
 
+    def format(self) -> dict:
+        return {
+            self.key.lower(): [{
+                "key": self.key,
+                "value": self.value
+            }]
+        }
+
 
 @dataclass(frozen=True)
 class CloudFrontLambdaEdgeBody:
@@ -88,6 +104,14 @@ class CloudFrontLambdaEdgeBody:
         return CloudFrontLambdaEdgeBody(
             input_truncated=data["inputTruncated"], action=data["action"], encoding=data["encoding"], data=data["data"]
         )
+
+    def format(self) -> dict:
+        return {
+            "inputTruncated": self.input_truncated,
+            "action": self.action,
+            "encoding": self.encoding,
+            "data": self.data,
+        }
 
 
 @dataclass(frozen=True)
@@ -118,6 +142,31 @@ class CloudFrontLambdaEdgeOrigin:
             auth_method=custom.get("authMethod"),
             region=custom.get("region"),
         )
+
+    def format(self) -> dict:
+        headers = {}
+        for header in self.custom_headers:
+            headers.update(header.format())
+        data = {
+            "customHeaders": headers,
+            "domainName": self.domain_name,
+            "path": self.path,
+        }
+        if self.keepalive_timeout is not None:
+            data.update({"keepaliveTimeout": self.keepalive_timeout})
+        if self.port is not None:
+            data.update({"port": self.port})
+        if self.protocol is not None:
+            data.update({"protocol": self.protocol})
+        if self.read_timeout is not None:
+            data.update({"readTimeout": self.read_timeout})
+        if self.ssl_protocols is not None:
+            data.update({"sslProtocols": self.ssl_protocols})
+        if self.auth_method is not None:
+            data.update({"authMethod": self.auth_method})
+        if self.region is not None:
+            data.update({"region": self.region})
+        return {"custom": data}
 
 
 @dataclass(frozen=True)
@@ -150,6 +199,23 @@ class CloudFrontLambdaEdgeRequest:
                 return header
         return None
 
+    def format(self) -> dict:
+        headers = {}
+        for header in self.headers:
+            headers.update(header.format())
+        data = {
+            "clientIp": self.client_ip,
+            "headers": headers,
+            "method": self.method,
+            "querystring": self.querystring,
+            "uri": self.uri,
+        }
+        if self.body is not None:
+            data.update({"body": self.body.format()})
+        if self.origin is not None:
+            data.update({"origin": self.origin.format()})
+        return data
+
 
 @dataclass(frozen=True)
 class CloudFrontLambdaEdgeResponse:
@@ -171,3 +237,9 @@ class CloudFrontLambdaEdge:
             request=CloudFrontLambdaEdgeRequest.from_dict(data["request"]),
             response=None,
         )
+
+    def format(self) -> dict:
+        return {
+            "config": self.config.format(),
+            "request": self.request.format(),
+        }
