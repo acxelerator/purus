@@ -1,7 +1,11 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional
 
-__all__ = ["CloudFrontLambdaEdge"]
+__all__ = ["CloudFrontLambdaEdge", "CloudFrontLambdaEdgeError"]
+
+
+class CloudFrontLambdaEdgeError(Exception):
+    pass
 
 
 @dataclass(frozen=True)
@@ -35,7 +39,7 @@ class CloudFrontLambdaEdgeHeader:
     value: str = field(metadata={"readonly": False})
 
     @staticmethod
-    def is_allowed_custom_header_key(header_key: str) -> bool:
+    def check_allowed_custom_header_key(header_key: str) -> bool:
         """
 
         Returns: allowed: True
@@ -71,7 +75,31 @@ class CloudFrontLambdaEdgeHeader:
         not_allowed_header_lower_keys = [k.lower() for k in not_allowed_header_keys]
         if header_key_ in not_allowed_header_lower_keys:
             return True
-        return True
+        return False
+
+    @staticmethod
+    def check_read_only_header_in_viewer_request(header_key: str) -> bool:
+        read_only_headers = [
+            "Content-Length",
+            "Host",
+            "Transfer-Encoding",
+            "Via"
+        ]
+        return header_key in read_only_headers
+
+    @staticmethod
+    def check_read_only_header_in_origin_request(header_key: str) -> bool:
+        read_only_headers = [
+            "Accept-Encoding",
+            "Content-Length",
+            "If-Modified-Since",
+            "If-None-Match",
+            "If-Range",
+            "If-Unmodified-Since",
+            "Transfer-Encoding",
+            "Via",
+        ]
+        return header_key in read_only_headers
 
     @staticmethod
     def from_key_value(key: str, value: List[Dict[str, str]]):
@@ -168,6 +196,11 @@ class CloudFrontLambdaEdgeOrigin:
             data.update({"region": self.region})
         return {"custom": data}
 
+    def update_custom_header(self, key: str, value: str) -> "CloudFrontLambdaEdgeOrigin":
+        headers = [h for h in self.custom_headers if h.key != key]
+        headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
+        return replace(self, custom_headers=headers)
+
 
 @dataclass(frozen=True)
 class CloudFrontLambdaEdgeRequest:
@@ -198,6 +231,31 @@ class CloudFrontLambdaEdgeRequest:
             if header.key.lower() == key.lower():
                 return header
         return None
+
+    def update_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeRequest":
+        if event_type == "viewer-request":
+            if CloudFrontLambdaEdgeHeader.check_read_only_header_in_viewer_request(header_key=key):
+                raise CloudFrontLambdaEdgeError()
+        elif event_type == "origin-request":
+            if CloudFrontLambdaEdgeHeader.check_read_only_header_in_origin_request(header_key=key):
+                raise CloudFrontLambdaEdgeError()
+        headers = [h for h in self.headers if h.key != key]
+        headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
+        return replace(self, headers=headers)
+
+    def update_custom_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeRequest":
+        if event_type == "origin-request":
+            if CloudFrontLambdaEdgeHeader.check_allowed_custom_header_key(header_key=key):
+                raise CloudFrontLambdaEdgeError()
+            origin = self.origin.update_custom_header(key=key, value=value)
+            return replace(self, origin=origin)
+        return self
+
+    def update_querystring(self, querystring: str) -> "CloudFrontLambdaEdgeRequest":
+        return replace(self, querystring=querystring)
+
+    def update_uri(self, uri: str) -> "CloudFrontLambdaEdgeRequest":
+        return replace(self, uri=uri)
 
     def format(self) -> dict:
         headers = {}
@@ -243,3 +301,11 @@ class CloudFrontLambdaEdge:
             "config": self.config.format(),
             "request": self.request.format(),
         }
+
+    def update_request_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
+        request = self.request.update_header(key=key, value=value, event_type=self.config.event_type)
+        return replace(self, request=request)
+
+    def update_request_custom_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
+        request = self.request.update_custom_header(key=key, value=value, event_type=self.config.event_type)
+        return replace(self, request=request)
