@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 __all__ = ["CloudFrontLambdaEdge", "CloudFrontLambdaEdgeError"]
 
@@ -121,7 +121,7 @@ class CloudFrontLambdaEdgeHeader:
 
     @staticmethod
     def format_to_dict(headers: List["CloudFrontLambdaEdgeHeader"]) -> Dict[str, List[dict]]:
-        result = {}
+        result: Dict[str, List[dict]] = {}
         for header in headers:
             if header.key in result:
                 result[header.key].append({"key": header.key, "value": header.value})
@@ -185,7 +185,7 @@ class CloudFrontLambdaEdgeOrigin:
         )
 
     def format(self) -> dict:
-        data = {
+        data: Dict[str, Any] = {
             "customHeaders": CloudFrontLambdaEdgeHeader.format_to_dict(self.custom_headers),
             "domainName": self.domain_name,
             "path": self.path,
@@ -256,6 +256,8 @@ class CloudFrontLambdaEdgeRequest:
     def append_custom_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeRequest":
         if event_type == "origin-request":
             if CloudFrontLambdaEdgeHeader.check_allowed_custom_header_key(header_key=key):
+                raise CloudFrontLambdaEdgeError()
+            if self.origin is None:
                 raise CloudFrontLambdaEdgeError()
             origin = self.origin.update_custom_header(key=key, value=value)
             return replace(self, origin=origin)
