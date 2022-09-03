@@ -57,15 +57,15 @@ class TestAmazonCloudFront:
         lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
 
         with pytest.raises(CloudFrontLambdaEdgeError):
-            lambda_edge.update_request_header(key="Content-Length", value="")
+            lambda_edge.append_request_header(key="Content-Length", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
-            lambda_edge.update_request_header(key="Host", value="")
+            lambda_edge.append_request_header(key="Host", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
-            lambda_edge.update_request_header(key="Transfer-Encoding", value="")
+            lambda_edge.append_request_header(key="Transfer-Encoding", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
-            lambda_edge.update_request_header(key="Via", value="")
+            lambda_edge.append_request_header(key="Via", value="")
 
-        new_lambda_edge = lambda_edge.update_request_header(key="X-Original-Header", value="data")
+        new_lambda_edge = lambda_edge.append_request_header(key="X-Original-Header", value="data")
         assert new_lambda_edge.request.get_header("X-Original-Header").key == "X-Original-Header"
         assert new_lambda_edge.request.get_header("x-original-header").key == "X-Original-Header"
         assert new_lambda_edge.request.get_header("X-Original-Header").value == "data"
@@ -121,23 +121,23 @@ class TestAmazonCloudFront:
         lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
 
         with pytest.raises(CloudFrontLambdaEdgeError):
-            lambda_edge.update_request_header(key="Accept-Encoding", value="")
+            lambda_edge.append_request_header(key="Accept-Encoding", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
-            lambda_edge.update_request_header(key="Content-Length", value="")
+            lambda_edge.append_request_header(key="Content-Length", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
-            lambda_edge.update_request_header(key="If-Modified-Since", value="")
+            lambda_edge.append_request_header(key="If-Modified-Since", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
-            lambda_edge.update_request_header(key="If-None-Match", value="")
+            lambda_edge.append_request_header(key="If-None-Match", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
-            lambda_edge.update_request_header(key="If-Range", value="")
+            lambda_edge.append_request_header(key="If-Range", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
-            lambda_edge.update_request_header(key="If-Unmodified-Since", value="")
+            lambda_edge.append_request_header(key="If-Unmodified-Since", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
-            lambda_edge.update_request_header(key="Transfer-Encoding", value="")
+            lambda_edge.append_request_header(key="Transfer-Encoding", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
-            lambda_edge.update_request_header(key="Via", value="")
+            lambda_edge.append_request_header(key="Via", value="")
 
-        new_lambda_edge = lambda_edge.update_request_header(key="X-Original-Header", value="data")
+        new_lambda_edge = lambda_edge.append_request_header(key="X-Original-Header", value="data")
         assert new_lambda_edge.request.get_header("X-Original-Header").key == "X-Original-Header"
         assert new_lambda_edge.request.get_header("x-original-header").key == "X-Original-Header"
         assert new_lambda_edge.request.get_header("X-Original-Header").value == "data"

@@ -111,6 +111,16 @@ class CloudFrontLambdaEdgeHeader:
     def from_dict(data: dict) -> List["CloudFrontLambdaEdgeHeader"]:
         return [CloudFrontLambdaEdgeHeader.from_key_value(key=k, value=v) for k, v in data.items()]
 
+    @staticmethod
+    def format_to_dict(headers: List["CloudFrontLambdaEdgeHeader"]) -> Dict[str, List[dict]]:
+        result = {}
+        for header in headers:
+            if header.key in result:
+                result[header.key].append({"key": header.key, "value": header.value})
+            else:
+                result.update(header.format())
+        return result
+
     def format(self) -> dict:
         return {
             self.key.lower(): [{
@@ -172,11 +182,8 @@ class CloudFrontLambdaEdgeOrigin:
         )
 
     def format(self) -> dict:
-        headers = {}
-        for header in self.custom_headers:
-            headers.update(header.format())
         data = {
-            "customHeaders": headers,
+            "customHeaders": CloudFrontLambdaEdgeHeader.format_to_dict(self.custom_headers),
             "domainName": self.domain_name,
             "path": self.path,
         }
@@ -197,9 +204,8 @@ class CloudFrontLambdaEdgeOrigin:
         return {"custom": data}
 
     def update_custom_header(self, key: str, value: str) -> "CloudFrontLambdaEdgeOrigin":
-        headers = [h for h in self.custom_headers if h.key != key]
-        headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
-        return replace(self, custom_headers=headers)
+        self.custom_headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
+        return replace(self, custom_headers=self.custom_headers)
 
 
 @dataclass(frozen=True)
@@ -232,18 +238,17 @@ class CloudFrontLambdaEdgeRequest:
                 return header
         return None
 
-    def update_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeRequest":
+    def append_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeRequest":
         if event_type == "viewer-request":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_viewer_request(header_key=key):
                 raise CloudFrontLambdaEdgeError()
         elif event_type == "origin-request":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_origin_request(header_key=key):
                 raise CloudFrontLambdaEdgeError()
-        headers = [h for h in self.headers if h.key != key]
-        headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
-        return replace(self, headers=headers)
+        self.headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
+        return replace(self, headers=self.headers)
 
-    def update_custom_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeRequest":
+    def append_custom_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeRequest":
         if event_type == "origin-request":
             if CloudFrontLambdaEdgeHeader.check_allowed_custom_header_key(header_key=key):
                 raise CloudFrontLambdaEdgeError()
@@ -260,12 +265,9 @@ class CloudFrontLambdaEdgeRequest:
         return replace(self, uri=uri)
 
     def format(self) -> dict:
-        headers = {}
-        for header in self.headers:
-            headers.update(header.format())
         data = {
             "clientIp": self.client_ip,
-            "headers": headers,
+            "headers": CloudFrontLambdaEdgeHeader.format_to_dict(self.headers),
             "method": self.method,
             "querystring": self.querystring,
             "uri": self.uri,
@@ -304,12 +306,12 @@ class CloudFrontLambdaEdge:
             "request": self.request.format(),
         }
 
-    def update_request_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
-        request = self.request.update_header(key=key, value=value, event_type=self.config.event_type)
+    def append_request_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
+        request = self.request.append_header(key=key, value=value, event_type=self.config.event_type)
         return replace(self, request=request)
 
-    def update_request_custom_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
-        request = self.request.update_custom_header(key=key, value=value, event_type=self.config.event_type)
+    def append_request_custom_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
+        request = self.request.append_custom_header(key=key, value=value, event_type=self.config.event_type)
         return replace(self, request=request)
 
     def update_request_querystring(self, querystring: str) -> "CloudFrontLambdaEdge":
