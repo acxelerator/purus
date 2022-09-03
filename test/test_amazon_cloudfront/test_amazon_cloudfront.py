@@ -70,6 +70,7 @@ class TestAmazonCloudFront:
         request = viewer_request_data["Records"][0]["cf"]
         lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
 
+        # not-allowed headers to append
         with pytest.raises(CloudFrontLambdaEdgeError):
             lambda_edge.append_request_header(key="Content-Length", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
@@ -78,6 +79,9 @@ class TestAmazonCloudFront:
             lambda_edge.append_request_header(key="Transfer-Encoding", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
             lambda_edge.append_request_header(key="Via", value="")
+        # no effect to append headers
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            lambda_edge.append_response_header(key="any", value="")
 
         new_lambda_edge = lambda_edge.append_request_header(key="X-Original-Header", value="data")
         assert new_lambda_edge.request.get_header("X-Original-Header").key == "X-Original-Header"
@@ -134,6 +138,7 @@ class TestAmazonCloudFront:
         request = origin_request_data["Records"][0]["cf"]
         lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
 
+        # not-allowed headers to append
         with pytest.raises(CloudFrontLambdaEdgeError):
             lambda_edge.append_request_header(key="Accept-Encoding", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
@@ -150,6 +155,9 @@ class TestAmazonCloudFront:
             lambda_edge.append_request_header(key="Transfer-Encoding", value="")
         with pytest.raises(CloudFrontLambdaEdgeError):
             lambda_edge.append_request_header(key="Via", value="")
+        # no effect to append headers
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            lambda_edge.append_response_header(key="any", value="")
 
         new_lambda_edge = lambda_edge.append_request_header(key="X-Original-Header", value="data")
         assert new_lambda_edge.request.get_header("X-Original-Header").key == "X-Original-Header"
@@ -188,6 +196,24 @@ class TestAmazonCloudFront:
         # check format() output
         assert request == lambda_edge.format()
 
+    def test_origin_response_header_test(self, origin_response_data: dict):
+        request = origin_response_data["Records"][0]["cf"]
+        lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
+        # not-allowed headers to append
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            lambda_edge.append_response_header(key="Transfer-Encoding", value="")
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            lambda_edge.append_response_header(key="Via", value="")
+        # no effect to append headers
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            lambda_edge.append_request_header(key="any", value="")
+
+        # custom header
+        new_lambda_edge = lambda_edge.append_response_header(key="X-Original-Header", value="data")
+        assert new_lambda_edge.response.get_header("X-Original-Header").key == "X-Original-Header"
+        assert new_lambda_edge.response.get_header("x-original-header").key == "X-Original-Header"
+        assert new_lambda_edge.response.get_header("X-Original-Header").value == "data"
+
     def test_viewer_response(self, viewer_response_data: dict):
 
         request = viewer_response_data["Records"][0]["cf"]
@@ -204,3 +230,27 @@ class TestAmazonCloudFront:
         assert lambda_edge.response.get_header(key="content-length").value == "9593"
         # check format() output
         assert request == lambda_edge.format()
+
+    def test_viewer_response_header_test(self, viewer_response_data: dict):
+        request = viewer_response_data["Records"][0]["cf"]
+        lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
+        # not-allowed headers to append
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            lambda_edge.append_response_header(key="Content-Length", value="")
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            lambda_edge.append_response_header(key="Content-Encoding", value="")
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            lambda_edge.append_response_header(key="Transfer-Encoding", value="")
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            lambda_edge.append_response_header(key="Warning", value="")
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            lambda_edge.append_response_header(key="Via", value="")
+        # no effect to append headers
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            lambda_edge.append_request_header(key="any", value="")
+
+        # custom header
+        new_lambda_edge = lambda_edge.append_response_header(key="X-Original-Header", value="data")
+        assert new_lambda_edge.response.get_header("X-Original-Header").key == "X-Original-Header"
+        assert new_lambda_edge.response.get_header("x-original-header").key == "X-Original-Header"
+        assert new_lambda_edge.response.get_header("X-Original-Header").value == "data"

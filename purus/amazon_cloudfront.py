@@ -102,6 +102,25 @@ class CloudFrontLambdaEdgeHeader:
         return header_key in read_only_headers
 
     @staticmethod
+    def check_read_only_header_in_viewer_response(header_key: str) -> bool:
+        read_only_headers = [
+            "Content-Length",
+            "Content-Encoding",
+            "Transfer-Encoding",
+            "Warning",
+            "Via"
+        ]
+        return header_key in read_only_headers
+
+    @staticmethod
+    def check_read_only_header_in_origin_response(header_key: str) -> bool:
+        read_only_headers = [
+            "Transfer-Encoding",
+            "Via",
+        ]
+        return header_key in read_only_headers
+
+    @staticmethod
     def from_key_value(key: str, value: List[Dict[str, str]]):
         value_ = value[0]
         key_ = value[0].get("key", key)
@@ -245,6 +264,8 @@ class CloudFrontLambdaEdgeRequest:
         elif event_type == "origin-request":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_origin_request(header_key=key):
                 raise CloudFrontLambdaEdgeError()
+        else:
+            raise CloudFrontLambdaEdgeError()
         self.headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
         return replace(self, headers=self.headers)
 
@@ -306,6 +327,18 @@ class CloudFrontLambdaEdgeResponse:
                 return header
         return None
 
+    def append_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeResponse":
+        if event_type == "viewer-response":
+            if CloudFrontLambdaEdgeHeader.check_read_only_header_in_viewer_response(header_key=key):
+                raise CloudFrontLambdaEdgeError()
+        elif event_type == "origin-response":
+            if CloudFrontLambdaEdgeHeader.check_read_only_header_in_origin_response(header_key=key):
+                raise CloudFrontLambdaEdgeError()
+        else:
+            raise CloudFrontLambdaEdgeError()
+        self.headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
+        return replace(self, headers=self.headers)
+
 
 @dataclass(frozen=True)
 class CloudFrontLambdaEdge:
@@ -346,3 +379,9 @@ class CloudFrontLambdaEdge:
     def update_request_uri(self, uri: str) -> "CloudFrontLambdaEdge":
         request = self.request.update_uri(uri=uri)
         return replace(self, request=request)
+
+    def append_response_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
+        if self.response is None:
+            raise CloudFrontLambdaEdgeError()
+        response = self.response.append_header(key=key, value=value, event_type=self.config.event_type)
+        return replace(self, response=response)
