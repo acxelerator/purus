@@ -285,6 +285,27 @@ class CloudFrontLambdaEdgeResponse:
     status: str = field(metadata={"readonly": False})
     status_description: str = field(metadata={"readonly": False})
 
+    @staticmethod
+    def from_dict(data: dict) -> "CloudFrontLambdaEdgeResponse":
+        return CloudFrontLambdaEdgeResponse(
+            headers=CloudFrontLambdaEdgeHeader.from_dict(data=data["headers"]),
+            status=data["status"],
+            status_description=data["statusDescription"]
+        )
+
+    def format(self) -> dict:
+        return {
+            "headers": CloudFrontLambdaEdgeHeader.format_to_dict(self.headers),
+            "status": self.status,
+            "statusDescription": self.status_description
+        }
+
+    def get_header(self, key: str) -> Optional[CloudFrontLambdaEdgeHeader]:
+        for header in self.headers:
+            if header.key.lower() == key.lower():
+                return header
+        return None
+
 
 @dataclass(frozen=True)
 class CloudFrontLambdaEdge:
@@ -294,17 +315,21 @@ class CloudFrontLambdaEdge:
 
     @staticmethod
     def from_dict(data: dict):
+        response = data.get("response")
         return CloudFrontLambdaEdge(
             config=CloudFrontLambdaEdgeConfig.from_dict(data["config"]),
             request=CloudFrontLambdaEdgeRequest.from_dict(data["request"]),
-            response=None,
+            response=None if response is None else CloudFrontLambdaEdgeResponse.from_dict(response),
         )
 
     def format(self) -> dict:
-        return {
+        data = {
             "config": self.config.format(),
             "request": self.request.format(),
         }
+        if self.response:
+            data.update({"response": self.response.format()})
+        return data
 
     def append_request_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
         request = self.request.append_header(key=key, value=value, event_type=self.config.event_type)

@@ -24,6 +24,20 @@ def origin_request_data(path_amazon_cloudfront: str) -> dict:
     return data
 
 
+@pytest.fixture
+def origin_response_data(path_amazon_cloudfront: str) -> dict:
+    with open(f"{path_amazon_cloudfront}/origin_response.example.official.json", "r") as f:
+        data = json.load(f)
+    return data
+
+
+@pytest.fixture
+def viewer_response_data(path_amazon_cloudfront: str) -> dict:
+    with open(f"{path_amazon_cloudfront}/viewer_response.example.official.json", "r") as f:
+        data = json.load(f)
+    return data
+
+
 class TestAmazonCloudFront:
     def test_viewer_request(self, viewer_request_data: dict):
         request = viewer_request_data["Records"][0]["cf"]
@@ -156,3 +170,20 @@ class TestAmazonCloudFront:
         assert new_lambda_edge.request.uri == "/new_path"
         with pytest.raises(CloudFrontLambdaEdgeError):
             lambda_edge.update_request_uri("new_path")
+
+    def test_origin_response(self, origin_response_data: dict):
+
+        request = origin_response_data["Records"][0]["cf"]
+        lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
+        # response
+        assert lambda_edge.response.status == "200"
+        assert lambda_edge.response.status_description == "OK"
+        # response-headers
+        assert lambda_edge.response.get_header(key="X-XSS-Protection").key == "X-XSS-Protection"
+        assert lambda_edge.response.get_header(key="x-xss-protection").key == "X-XSS-Protection"
+        assert lambda_edge.response.get_header(key="x-xss-protection").value == "1; mode=block"
+        assert lambda_edge.response.get_header(key="Content-Length").key == "Content-Length"
+        assert lambda_edge.response.get_header(key="content-length").key == "Content-Length"
+        assert lambda_edge.response.get_header(key="content-length").value == "9593"
+        # check format() output
+        assert request == lambda_edge.format()
