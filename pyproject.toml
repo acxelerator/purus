@@ -3,18 +3,20 @@ name = "purus"
 version = "0.1.0"
 description = "parse parameters"
 authors = ["acxelerator <acx0911@gmail.com>"]
+license = "MIT"
+repository = 'https://github.com/acxelerator/purus'
+readme = 'README.md'
+keywords = ['aws', 'parameters', 'parser']
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
 
 [tool.poetry.dev-dependencies]
 isort = "^5.10.1"
-black = "^22.6.0"
+black = "^22.8.0"
 jupyterlab = "^3.4.5"
 pytest = "^7.0.0"
 pytest-cov = "^3.0.0"
-twine = "^4.0.1"
-wheel = "^0.34.2"
 mypy = "^0.971"
 
 [build-system]
