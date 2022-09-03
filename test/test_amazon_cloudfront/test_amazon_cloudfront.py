@@ -141,3 +141,18 @@ class TestAmazonCloudFront:
         assert new_lambda_edge.request.get_header("X-Original-Header").key == "X-Original-Header"
         assert new_lambda_edge.request.get_header("x-original-header").key == "X-Original-Header"
         assert new_lambda_edge.request.get_header("X-Original-Header").value == "data"
+
+    def test_origin_request_params_test(self, origin_request_data: dict):
+        request = origin_request_data["Records"][0]["cf"]
+        lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
+        assert lambda_edge.request.querystring == ""
+        assert lambda_edge.request.uri == "/"
+
+        # querystring
+        new_lambda_edge = lambda_edge.update_request_querystring(querystring="data")
+        assert new_lambda_edge.request.querystring == "data"
+        # uri
+        new_lambda_edge = lambda_edge.update_request_uri("/new_path")
+        assert new_lambda_edge.request.uri == "/new_path"
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            lambda_edge.update_request_uri("new_path")

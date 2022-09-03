@@ -255,6 +255,8 @@ class CloudFrontLambdaEdgeRequest:
         return replace(self, querystring=querystring)
 
     def update_uri(self, uri: str) -> "CloudFrontLambdaEdgeRequest":
+        if not uri.startswith("/"):
+            raise CloudFrontLambdaEdgeError()
         return replace(self, uri=uri)
 
     def format(self) -> dict:
@@ -308,4 +310,12 @@ class CloudFrontLambdaEdge:
 
     def update_request_custom_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
         request = self.request.update_custom_header(key=key, value=value, event_type=self.config.event_type)
+        return replace(self, request=request)
+
+    def update_request_querystring(self, querystring: str) -> "CloudFrontLambdaEdge":
+        request = self.request.update_querystring(querystring=querystring)
+        return replace(self, request=request)
+
+    def update_request_uri(self, uri: str) -> "CloudFrontLambdaEdge":
+        request = self.request.update_uri(uri=uri)
         return replace(self, request=request)
