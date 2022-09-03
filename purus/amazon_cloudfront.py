@@ -380,6 +380,10 @@ class CloudFrontLambdaEdge:
         request = self.request.update_uri(uri=uri)
         return replace(self, request=request)
 
+    def add_pseudo_response(self, status: str, status_description: str) -> "CloudFrontLambdaEdge":
+        response = CloudFrontLambdaEdgeResponse(headers=[], status=status, status_description=status_description)
+        return replace(self, response=response)
+
     def append_response_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
         if self.response is None:
             raise CloudFrontLambdaEdgeError()

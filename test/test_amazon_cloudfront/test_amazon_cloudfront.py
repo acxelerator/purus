@@ -82,6 +82,9 @@ class TestAmazonCloudFront:
         # no effect to append headers
         with pytest.raises(CloudFrontLambdaEdgeError):
             lambda_edge.append_response_header(key="any", value="")
+        new_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK")
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            new_lambda_edge.append_response_header(key="any", value="")
 
         new_lambda_edge = lambda_edge.append_request_header(key="X-Original-Header", value="data")
         assert new_lambda_edge.request.get_header("X-Original-Header").key == "X-Original-Header"
@@ -158,7 +161,11 @@ class TestAmazonCloudFront:
         # no effect to append headers
         with pytest.raises(CloudFrontLambdaEdgeError):
             lambda_edge.append_response_header(key="any", value="")
+        new_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK")
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            new_lambda_edge.append_response_header(key="any", value="")
 
+        # headers to append
         new_lambda_edge = lambda_edge.append_request_header(key="X-Original-Header", value="data")
         assert new_lambda_edge.request.get_header("X-Original-Header").key == "X-Original-Header"
         assert new_lambda_edge.request.get_header("x-original-header").key == "X-Original-Header"
