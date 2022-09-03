@@ -79,12 +79,7 @@ class CloudFrontLambdaEdgeHeader:
 
     @staticmethod
     def check_read_only_header_in_viewer_request(header_key: str) -> bool:
-        read_only_headers = [
-            "Content-Length",
-            "Host",
-            "Transfer-Encoding",
-            "Via"
-        ]
+        read_only_headers = ["Content-Length", "Host", "Transfer-Encoding", "Via"]
         return header_key in read_only_headers
 
     @staticmethod
@@ -103,13 +98,7 @@ class CloudFrontLambdaEdgeHeader:
 
     @staticmethod
     def check_read_only_header_in_viewer_response(header_key: str) -> bool:
-        read_only_headers = [
-            "Content-Length",
-            "Content-Encoding",
-            "Transfer-Encoding",
-            "Warning",
-            "Via"
-        ]
+        read_only_headers = ["Content-Length", "Content-Encoding", "Transfer-Encoding", "Warning", "Via"]
         return header_key in read_only_headers
 
     @staticmethod
@@ -141,12 +130,7 @@ class CloudFrontLambdaEdgeHeader:
         return result
 
     def format(self) -> dict:
-        return {
-            self.key.lower(): [{
-                "key": self.key,
-                "value": self.value
-            }]
-        }
+        return {self.key.lower(): [{"key": self.key, "value": self.value}]}
 
 
 @dataclass(frozen=True)
@@ -311,14 +295,14 @@ class CloudFrontLambdaEdgeResponse:
         return CloudFrontLambdaEdgeResponse(
             headers=CloudFrontLambdaEdgeHeader.from_dict(data=data["headers"]),
             status=data["status"],
-            status_description=data["statusDescription"]
+            status_description=data["statusDescription"],
         )
 
     def format(self) -> dict:
         return {
             "headers": CloudFrontLambdaEdgeHeader.format_to_dict(self.headers),
             "status": self.status,
-            "statusDescription": self.status_description
+            "statusDescription": self.status_description,
         }
 
     def get_header(self, key: str) -> Optional[CloudFrontLambdaEdgeHeader]:
