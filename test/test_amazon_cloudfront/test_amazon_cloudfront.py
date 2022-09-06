@@ -2,7 +2,8 @@ import json
 
 import pytest
 
-from purus.amazon_cloudfront import CloudFrontLambdaEdge, CloudFrontLambdaEdgeError
+from purus.amazon_cloudfront import CloudFrontLambdaEdge
+from purus.errors import CloudFrontLambdaEdgeError, CloudFrontLambdaEdgeHeaderEditNotAllowedError
 
 
 @pytest.fixture
@@ -71,14 +72,18 @@ class TestAmazonCloudFront:
         lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
 
         # not-allowed headers to append
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="Content-Length", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit Content-Length at [viewer-request]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="Host", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit Host at [viewer-request]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="Transfer-Encoding", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit Transfer-Encoding at [viewer-request]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="Via", value="")
+        assert str(e.value) == f"Not allowed to edit Via at [viewer-request]"
         # no effect to append headers
         with pytest.raises(CloudFrontLambdaEdgeError):
             lambda_edge.append_response_header(key="any", value="")
@@ -155,22 +160,30 @@ class TestAmazonCloudFront:
         lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
 
         # not-allowed headers to append
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="Accept-Encoding", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit Accept-Encoding at [origin-request]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="Content-Length", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit Content-Length at [origin-request]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="If-Modified-Since", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit If-Modified-Since at [origin-request]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="If-None-Match", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit If-None-Match at [origin-request]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="If-Range", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit If-Range at [origin-request]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="If-Unmodified-Since", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit If-Unmodified-Since at [origin-request]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="Transfer-Encoding", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit Transfer-Encoding at [origin-request]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="Via", value="")
+        assert str(e.value) == f"Not allowed to edit Via at [origin-request]"
         # no effect to append headers
         with pytest.raises(CloudFrontLambdaEdgeError):
             lambda_edge.append_response_header(key="any", value="")
@@ -221,10 +234,12 @@ class TestAmazonCloudFront:
         request = origin_response_data["Records"][0]["cf"]
         lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
         # not-allowed headers to append
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_response_header(key="Transfer-Encoding", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit Transfer-Encoding at [origin-response]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_response_header(key="Via", value="")
+        assert str(e.value) == f"Not allowed to edit Via at [origin-response]"
         # no effect to append headers
         with pytest.raises(CloudFrontLambdaEdgeError):
             lambda_edge.append_request_header(key="any", value="")
@@ -257,16 +272,21 @@ class TestAmazonCloudFront:
         request = viewer_response_data["Records"][0]["cf"]
         lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
         # not-allowed headers to append
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_response_header(key="Content-Length", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit Content-Length at [viewer-response]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_response_header(key="Content-Encoding", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit Content-Encoding at [viewer-response]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_response_header(key="Transfer-Encoding", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit Transfer-Encoding at [viewer-response]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_response_header(key="Warning", value="")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        assert str(e.value) == f"Not allowed to edit Warning at [viewer-response]"
+        with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_response_header(key="Via", value="")
+        assert str(e.value) == f"Not allowed to edit Via at [viewer-response]"
         # no effect to append headers
         with pytest.raises(CloudFrontLambdaEdgeError):
             lambda_edge.append_request_header(key="any", value="")
