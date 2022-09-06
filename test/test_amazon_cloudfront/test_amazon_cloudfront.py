@@ -3,7 +3,12 @@ import json
 import pytest
 
 from purus.amazon_cloudfront import CloudFrontLambdaEdge
-from purus.errors import CloudFrontLambdaEdgeError, CloudFrontLambdaEdgeHeaderEditNotAllowedError
+from purus.errors import (
+    CloudFrontLambdaEdgeError,
+    CloudFrontLambdaEdgeHeaderAppendNoEffectError,
+    CloudFrontLambdaEdgeHeaderEditNotAllowedError,
+    CloudFrontLambdaEdgeObjectNotFoundError,
+)
 
 
 @pytest.fixture
@@ -84,12 +89,15 @@ class TestAmazonCloudFront:
         with pytest.raises(CloudFrontLambdaEdgeHeaderEditNotAllowedError) as e:
             lambda_edge.append_request_header(key="Via", value="")
         assert str(e.value) == f"Not allowed to edit Via at [viewer-request]"
+
         # no effect to append headers
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        with pytest.raises(CloudFrontLambdaEdgeObjectNotFoundError) as e:
             lambda_edge.append_response_header(key="any", value="")
+        assert str(e.value) == f"Not found [response]"
         new_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        with pytest.raises(CloudFrontLambdaEdgeHeaderAppendNoEffectError) as e:
             new_lambda_edge.append_response_header(key="any", value="")
+        assert str(e.value) == f"No effect to append any at [viewer-request]"
 
         new_lambda_edge = lambda_edge.append_request_header(key="X-Original-Header", value="data")
         assert new_lambda_edge.request.get_header("X-Original-Header").key == "X-Original-Header"
@@ -185,11 +193,13 @@ class TestAmazonCloudFront:
             lambda_edge.append_request_header(key="Via", value="")
         assert str(e.value) == f"Not allowed to edit Via at [origin-request]"
         # no effect to append headers
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        with pytest.raises(CloudFrontLambdaEdgeObjectNotFoundError) as e:
             lambda_edge.append_response_header(key="any", value="")
+        assert str(e.value) == f"Not found [response]"
         new_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK")
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        with pytest.raises(CloudFrontLambdaEdgeHeaderAppendNoEffectError) as e:
             new_lambda_edge.append_response_header(key="any", value="")
+        assert str(e.value) == f"No effect to append any at [origin-request]"
 
         # headers to append
         new_lambda_edge = lambda_edge.append_request_header(key="X-Original-Header", value="data")
@@ -241,8 +251,9 @@ class TestAmazonCloudFront:
             lambda_edge.append_response_header(key="Via", value="")
         assert str(e.value) == f"Not allowed to edit Via at [origin-response]"
         # no effect to append headers
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        with pytest.raises(CloudFrontLambdaEdgeHeaderAppendNoEffectError) as e:
             lambda_edge.append_request_header(key="any", value="")
+        assert str(e.value) == f"No effect to append any at [origin-response]"
 
         # custom header
         new_lambda_edge = lambda_edge.append_response_header(key="X-Original-Header", value="data")
@@ -288,8 +299,9 @@ class TestAmazonCloudFront:
             lambda_edge.append_response_header(key="Via", value="")
         assert str(e.value) == f"Not allowed to edit Via at [viewer-response]"
         # no effect to append headers
-        with pytest.raises(CloudFrontLambdaEdgeError):
+        with pytest.raises(CloudFrontLambdaEdgeHeaderAppendNoEffectError) as e:
             lambda_edge.append_request_header(key="any", value="")
+        assert str(e.value) == f"No effect to append any at [viewer-response]"
 
         # custom header
         new_lambda_edge = lambda_edge.append_response_header(key="X-Original-Header", value="data")
