@@ -10,7 +10,7 @@
 [![PiPY](https://img.shields.io/pypi/v/purus.svg)](https://pypi.org/project/purus/)
 
 
-`purus` parses parameters provided from AWS services.
+`purus` parses parameters provided from Lambda@Edge on CloudFront, and it manipulates request and response.
 It is named after The Purus River, or a tributary of The Amazon River.
 
 
@@ -47,7 +47,7 @@ def lambda_handler(event: dict, _):
             status="400",
             status_description="error_occurred"
         )
-        return response
+        return response.format()
     
     # add headers to request
     modified_request = lambda_edge.append_request_header(
@@ -59,7 +59,7 @@ def lambda_handler(event: dict, _):
     )
     
     # to request
-    return  modified_request.request
+    return  modified_request.request.format()
 
 
 ```
