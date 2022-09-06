@@ -152,11 +152,21 @@ class CloudFrontLambdaCookie:
         assert self.same_site in ["Lax", "Strict", "None"]
         assert type(self.secure) is bool
         assert type(self.http_only) is bool
+        if self.expires is not None:
+            assert type(self.expires) is str or type(self.expires) is datetime
 
     def format_value(self) -> str:
         value = f"{self.key}={self.value}"
         if self.expires is not None:
-            value = f"{value}; Expires={self.expires}"
+            gmt_format = "%a, %d %b %Y %H:%M:%S GMT"
+            if type(self.expires) is str:
+                try:
+                    _ = datetime.strptime(self.expires, gmt_format)
+                except ValueError as e:
+                    raise CloudFrontLambdaEdgeError() from e
+                value = f"{value}; Expires={self.expires}"
+            elif type(self.expires) is datetime:
+                value = f"{value}; Expires={self.expires.strftime(gmt_format)}"
         if self.domain is not None:
             value = f"{value}; Domain={self.domain}"
         if self.path is not None:
@@ -426,7 +436,7 @@ class CloudFrontLambdaEdge:
         self,
         key: str,
         value: str,
-        expires: Optional[str] = None,
+        expires: Optional[Union[str, datetime]] = None,
         domain: Optional[str] = None,
         path: Optional[str] = None,
         same_site: str = "Lax",
