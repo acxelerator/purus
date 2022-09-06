@@ -323,8 +323,6 @@ class CloudFrontLambdaEdgeResponse:
         elif event_type == "origin-response":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_origin_response(header_key=key):
                 raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
-        else:
-            raise CloudFrontLambdaEdgeHeaderAppendNoEffectError(header_key=key, event_type=event_type)
         self.headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
         return replace(self, headers=self.headers)
 

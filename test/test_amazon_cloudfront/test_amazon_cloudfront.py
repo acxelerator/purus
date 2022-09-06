@@ -94,10 +94,6 @@ class TestAmazonCloudFront:
         with pytest.raises(CloudFrontLambdaEdgeObjectNotFoundError) as e:
             lambda_edge.append_response_header(key="any", value="")
         assert str(e.value) == f"Not found [response]"
-        new_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK")
-        with pytest.raises(CloudFrontLambdaEdgeHeaderAppendNoEffectError) as e:
-            new_lambda_edge.append_response_header(key="any", value="")
-        assert str(e.value) == f"No effect to append any at [viewer-request]"
 
         new_lambda_edge = lambda_edge.append_request_header(key="X-Original-Header", value="data")
         assert new_lambda_edge.request.get_header("X-Original-Header").key == "X-Original-Header"
@@ -196,10 +192,6 @@ class TestAmazonCloudFront:
         with pytest.raises(CloudFrontLambdaEdgeObjectNotFoundError) as e:
             lambda_edge.append_response_header(key="any", value="")
         assert str(e.value) == f"Not found [response]"
-        new_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK")
-        with pytest.raises(CloudFrontLambdaEdgeHeaderAppendNoEffectError) as e:
-            new_lambda_edge.append_response_header(key="any", value="")
-        assert str(e.value) == f"No effect to append any at [origin-request]"
 
         # headers to append
         new_lambda_edge = lambda_edge.append_request_header(key="X-Original-Header", value="data")
