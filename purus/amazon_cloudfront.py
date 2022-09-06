@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field, replace
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
 
 from .errors import (
     CloudFrontLambdaEdgeError,
@@ -134,6 +135,40 @@ class CloudFrontLambdaEdgeHeader:
 
     def format(self) -> dict:
         return {self.key.lower(): [{"key": self.key, "value": self.value}]}
+
+
+@dataclass(frozen=True)
+class CloudFrontLambdaCookie:
+    key: str
+    value: str
+    expires: Optional[Union[str, datetime]] = None
+    domain: Optional[str] = None
+    path: Optional[str] = None
+    same_site: str = "Lax"
+    secure: bool = True
+    http_only: bool = True
+
+    def __post_init__(self):
+        assert self.same_site in ["Lax", "Strict", "None"]
+        assert type(self.secure) is bool
+        assert type(self.http_only) is bool
+
+    def format_value(self) -> str:
+        value = f"{self.key}={self.value}"
+        if self.expires is not None:
+            value = f"{value}; Expires={self.expires}"
+        if self.domain is not None:
+            value = f"{value}; Domain={self.domain}"
+        if self.path is not None:
+            value = f"{value}; Path={self.path}"
+        if self.same_site is not None:
+            value = f"{value}; SameSite={self.same_site}"
+        if self.secure:
+            value = f"{value}; Secure"
+        if self.http_only:
+            value = f"{value}; HttpOnly"
+
+        return value
 
 
 @dataclass(frozen=True)
@@ -385,4 +420,32 @@ class CloudFrontLambdaEdge:
         if self.response is None:
             raise CloudFrontLambdaEdgeObjectNotFoundError(object_name="response")
         response = self.response.append_header(key=key, value=value, event_type=self.config.event_type)
+        return replace(self, response=response)
+
+    def append_response_set_cookie_header(
+        self,
+        key: str,
+        value: str,
+        expires: Optional[str] = None,
+        domain: Optional[str] = None,
+        path: Optional[str] = None,
+        same_site: str = "Lax",
+        secure: bool = True,
+        http_only: bool = True,
+    ) -> "CloudFrontLambdaEdge":
+        if self.response is None:
+            raise CloudFrontLambdaEdgeObjectNotFoundError(object_name="response")
+        cookie = CloudFrontLambdaCookie(
+            key=key,
+            value=value,
+            expires=expires,
+            domain=domain,
+            path=path,
+            same_site=same_site,
+            secure=secure,
+            http_only=http_only,
+        )
+        response = self.response.append_header(
+            key="Set-Cookie", value=cookie.format_value(), event_type=self.config.event_type
+        )
         return replace(self, response=response)
