@@ -91,6 +91,19 @@ class TestAmazonCloudFront:
         assert new_lambda_edge.request.get_header("x-original-header").key == "X-Original-Header"
         assert new_lambda_edge.request.get_header("X-Original-Header").value == "data"
 
+    def test_viewer_request_pseudo_response_test(self, viewer_request_data: dict):
+        request = viewer_request_data["Records"][0]["cf"]
+        lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
+
+        # redirect_response
+        redirect_lambda_edge = lambda_edge.add_pseudo_redirect_response(
+            status="307", status_description="Redirect", location_url="https://example.com"
+        )
+        assert redirect_lambda_edge.response.get_header("location").key == "location"
+        assert redirect_lambda_edge.response.get_header("location").value == "https://example.com"
+        assert redirect_lambda_edge.response.status == "307"
+        assert redirect_lambda_edge.response.status_description == "Redirect"
+
     def test_origin_request(self, origin_request_data: dict):
 
         request = origin_request_data["Records"][0]["cf"]
@@ -200,6 +213,7 @@ class TestAmazonCloudFront:
         assert lambda_edge.response.get_header(key="Content-Length").key == "Content-Length"
         assert lambda_edge.response.get_header(key="content-length").key == "Content-Length"
         assert lambda_edge.response.get_header(key="content-length").value == "9593"
+        assert lambda_edge.response.get_header(key="Not-Exist") is None
         # check format() output
         assert request == lambda_edge.format()
 
@@ -235,6 +249,7 @@ class TestAmazonCloudFront:
         assert lambda_edge.response.get_header(key="Content-Length").key == "Content-Length"
         assert lambda_edge.response.get_header(key="content-length").key == "Content-Length"
         assert lambda_edge.response.get_header(key="content-length").value == "9593"
+        assert lambda_edge.response.get_header(key="Not-Exist") is None
         # check format() output
         assert request == lambda_edge.format()
 
