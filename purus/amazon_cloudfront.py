@@ -1,6 +1,12 @@
 from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Optional
-from .errors import CloudFrontLambdaEdgeError, CloudFrontLambdaEdgeHeaderEditNotAllowedError
+
+from .errors import (
+    CloudFrontLambdaEdgeError,
+    CloudFrontLambdaEdgeHeaderAppendNoEffectError,
+    CloudFrontLambdaEdgeHeaderEditNotAllowedError,
+    CloudFrontLambdaEdgeObjectNotFoundError,
+)
 
 __all__ = ["CloudFrontLambdaEdge"]
 
@@ -246,7 +252,7 @@ class CloudFrontLambdaEdgeRequest:
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_origin_request(header_key=key):
                 raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
         else:
-            raise CloudFrontLambdaEdgeError()
+            raise CloudFrontLambdaEdgeHeaderAppendNoEffectError(header_key=key, event_type=event_type)
         self.headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
         return replace(self, headers=self.headers)
 
@@ -255,7 +261,7 @@ class CloudFrontLambdaEdgeRequest:
             if CloudFrontLambdaEdgeHeader.check_allowed_custom_header_key(header_key=key):
                 raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
             if self.origin is None:
-                raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeObjectNotFoundError(object_name="origin")
             origin = self.origin.update_custom_header(key=key, value=value)
             return replace(self, origin=origin)
         return self
@@ -318,7 +324,7 @@ class CloudFrontLambdaEdgeResponse:
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_origin_response(header_key=key):
                 raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
         else:
-            raise CloudFrontLambdaEdgeError()
+            raise CloudFrontLambdaEdgeHeaderAppendNoEffectError(header_key=key, event_type=event_type)
         self.headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
         return replace(self, headers=self.headers)
 
@@ -379,6 +385,6 @@ class CloudFrontLambdaEdge:
 
     def append_response_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
         if self.response is None:
-            raise CloudFrontLambdaEdgeError()
+            raise CloudFrontLambdaEdgeObjectNotFoundError(object_name="response")
         response = self.response.append_header(key=key, value=value, event_type=self.config.event_type)
         return replace(self, response=response)
