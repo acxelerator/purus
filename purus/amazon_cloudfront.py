@@ -370,6 +370,16 @@ class CloudFrontLambdaEdge:
         response = CloudFrontLambdaEdgeResponse(headers=[], status=status, status_description=status_description)
         return replace(self, response=response)
 
+    def add_pseudo_redirect_response(
+        self, status: str, status_description: str, location_url: str
+    ) -> "CloudFrontLambdaEdge":
+        response = CloudFrontLambdaEdgeResponse(
+            headers=[CloudFrontLambdaEdgeHeader(key="location", value=location_url)],
+            status=status,
+            status_description=status_description,
+        )
+        return replace(self, response=response)
+
     def append_response_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
         if self.response is None:
             raise CloudFrontLambdaEdgeError()
