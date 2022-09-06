@@ -113,6 +113,51 @@ class TestAmazonCloudFront:
         assert redirect_lambda_edge.response.status == "307"
         assert redirect_lambda_edge.response.status_description == "Redirect"
 
+    def test_viewer_request_set_cookie_test(self, viewer_request_data: dict):
+        request = viewer_request_data["Records"][0]["cf"]
+        lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
+
+        # no effect to append headers
+        with pytest.raises(CloudFrontLambdaEdgeObjectNotFoundError) as e:
+            lambda_edge.append_response_set_cookie_header(key="example_key", value="example_value")
+        assert str(e.value) == f"Not found [response]"
+
+        # default-cookie
+        pseudo_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK!")
+        set_default_cookie_lambda_edge = pseudo_lambda_edge.append_response_set_cookie_header(
+            key="example_key", value="example_value"
+        )
+        assert set_default_cookie_lambda_edge.response.get_header("Set-Cookie").key == "Set-Cookie"
+        assert set_default_cookie_lambda_edge.response.get_header("set-cookie").key == "Set-Cookie"
+        assert (
+            set_default_cookie_lambda_edge.response.get_header("set-cookie").value
+            == "example_key=example_value; SameSite=Lax; Secure; HttpOnly"
+        )
+
+        # domain-cookie
+        pseudo_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK!")
+        set_domain_cookie_lambda_edge = pseudo_lambda_edge.append_response_set_cookie_header(
+            key="example_key", value="example_value", domain="example.com"
+        )
+        assert set_domain_cookie_lambda_edge.response.get_header("Set-Cookie").key == "Set-Cookie"
+        assert set_domain_cookie_lambda_edge.response.get_header("set-cookie").key == "Set-Cookie"
+        assert (
+            set_domain_cookie_lambda_edge.response.get_header("set-cookie").value
+            == "example_key=example_value; Domain=example.com; SameSite=Lax; Secure; HttpOnly"
+        )
+
+        # path-cookie
+        pseudo_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK!")
+        set_domain_cookie_lambda_edge = pseudo_lambda_edge.append_response_set_cookie_header(
+            key="example_key", value="example_value", path="/example"
+        )
+        assert set_domain_cookie_lambda_edge.response.get_header("Set-Cookie").key == "Set-Cookie"
+        assert set_domain_cookie_lambda_edge.response.get_header("set-cookie").key == "Set-Cookie"
+        assert (
+            set_domain_cookie_lambda_edge.response.get_header("set-cookie").value
+            == "example_key=example_value; Path=/example; SameSite=Lax; Secure; HttpOnly"
+        )
+
     def test_origin_request(self, origin_request_data: dict):
 
         request = origin_request_data["Records"][0]["cf"]
