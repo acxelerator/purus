@@ -1,11 +1,14 @@
 from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Optional
 
-__all__ = ["CloudFrontLambdaEdge", "CloudFrontLambdaEdgeError"]
+from .errors import (
+    CloudFrontLambdaEdgeError,
+    CloudFrontLambdaEdgeHeaderAppendNoEffectError,
+    CloudFrontLambdaEdgeHeaderEditNotAllowedError,
+    CloudFrontLambdaEdgeObjectNotFoundError,
+)
 
-
-class CloudFrontLambdaEdgeError(Exception):
-    pass
+__all__ = ["CloudFrontLambdaEdge"]
 
 
 @dataclass(frozen=True)
@@ -244,21 +247,21 @@ class CloudFrontLambdaEdgeRequest:
     def append_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeRequest":
         if event_type == "viewer-request":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_viewer_request(header_key=key):
-                raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
         elif event_type == "origin-request":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_origin_request(header_key=key):
-                raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
         else:
-            raise CloudFrontLambdaEdgeError()
+            raise CloudFrontLambdaEdgeHeaderAppendNoEffectError(header_key=key, event_type=event_type)
         self.headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
         return replace(self, headers=self.headers)
 
     def append_custom_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeRequest":
         if event_type == "origin-request":
             if CloudFrontLambdaEdgeHeader.check_allowed_custom_header_key(header_key=key):
-                raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
             if self.origin is None:
-                raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeObjectNotFoundError(object_name="origin")
             origin = self.origin.update_custom_header(key=key, value=value)
             return replace(self, origin=origin)
         return self
@@ -316,12 +319,12 @@ class CloudFrontLambdaEdgeResponse:
     def append_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeResponse":
         if event_type == "viewer-response":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_viewer_response(header_key=key):
-                raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
         elif event_type == "origin-response":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_origin_response(header_key=key):
-                raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
         else:
-            raise CloudFrontLambdaEdgeError()
+            raise CloudFrontLambdaEdgeHeaderAppendNoEffectError(header_key=key, event_type=event_type)
         self.headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
         return replace(self, headers=self.headers)
 
@@ -382,6 +385,6 @@ class CloudFrontLambdaEdge:
 
     def append_response_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
         if self.response is None:
-            raise CloudFrontLambdaEdgeError()
+            raise CloudFrontLambdaEdgeObjectNotFoundError(object_name="response")
         response = self.response.append_header(key=key, value=value, event_type=self.config.event_type)
         return replace(self, response=response)
