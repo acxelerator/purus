@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 import pytest
@@ -159,13 +159,13 @@ class TestAmazonCloudFront:
         )
         pseudo_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK!")
         set_expires_cookie_lambda_edge_2 = pseudo_lambda_edge.append_response_set_cookie_header(
-            key="example_key", value="example_value", expires=datetime.fromtimestamp(0)
+            key="example_key", value="example_value", expires=datetime.fromtimestamp(0, tz=timezone.utc)
         )
         assert set_expires_cookie_lambda_edge_2.response.get_header("Set-Cookie").key == "Set-Cookie"
         assert set_expires_cookie_lambda_edge_2.response.get_header("set-cookie").key == "Set-Cookie"
         assert (
             set_expires_cookie_lambda_edge_2.response.get_header("set-cookie").value
-            == "example_key=example_value; Expires=Thu, 01 Jan 1970 09:00:00 GMT; SameSite=Lax; Secure; HttpOnly"
+            == "example_key=example_value; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure; HttpOnly"
         )
 
         # domain-cookie
