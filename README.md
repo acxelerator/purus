@@ -43,11 +43,20 @@ def lambda_handler(event: dict, _):
     
     # return on error
     if some_error_occurred:
-        response = lambda_edge.add_pseudo_response(
+        pseudo_payload = lambda_edge.add_pseudo_response(
             status="400",
             status_description="error_occurred"
         )
-        return response.format()
+        return pseudo_payload.response.format()
+    
+    # redirect
+    if redirect_condition:
+        pseudo_payload = lambda_edge.add_pseudo_redirect_response(
+            status="307",
+            status_description="Redirect",
+            location_url="https://redirect.example.com"
+        )
+        return pseudo_payload.response.format()
     
     # add headers to request
     modified_request = lambda_edge.append_request_header(
