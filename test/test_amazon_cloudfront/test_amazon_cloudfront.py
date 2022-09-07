@@ -25,6 +25,13 @@ def viewer_request_data(path_amazon_cloudfront: str) -> dict:
 
 
 @pytest.fixture
+def viewer_request_data_cookie(path_amazon_cloudfront: str) -> dict:
+    with open(f"{path_amazon_cloudfront}/viewer_request.example.cookie-ver.json", "r") as f:
+        data = json.load(f)
+    return data
+
+
+@pytest.fixture
 def origin_request_data(path_amazon_cloudfront: str) -> dict:
     with open(f"{path_amazon_cloudfront}/origin_request.example.official.json", "r") as f:
         data = json.load(f)
@@ -184,6 +191,25 @@ class TestAmazonCloudFront:
             set_domain_cookie_lambda_edge.response.get_header("set-cookie").value
             == "example_key=example_value; Path=/example; SameSite=Lax; Secure; HttpOnly"
         )
+
+    def test_viewer_request_get_cookies_none_test(self, viewer_request_data: dict):
+        request = viewer_request_data["Records"][0]["cf"]
+        lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
+
+        cookies = lambda_edge.request.get_cookies()
+        assert cookies is None
+
+    def test_viewer_request_get_cookies_test(self, viewer_request_data_cookie: dict):
+        request = viewer_request_data_cookie["Records"][0]["cf"]
+        lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
+
+        cookies = lambda_edge.request.get_cookies()
+        cookie_1 = [v for v in cookies if v.key == "example-key-1"][0]
+        assert cookie_1.key == "example-key-1"
+        assert cookie_1.value == "value1"
+        cookie_2 = [v for v in cookies if v.key == "example-key-2"][0]
+        assert cookie_2.key == "example-key-2"
+        assert cookie_2.value == "value2"
 
     def test_origin_request(self, origin_request_data: dict):
 
