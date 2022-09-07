@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 
 import pytest
@@ -19,6 +20,13 @@ def path_amazon_cloudfront(path_test_root: str):
 @pytest.fixture
 def viewer_request_data(path_amazon_cloudfront: str) -> dict:
     with open(f"{path_amazon_cloudfront}/viewer_request.example.official.json", "r") as f:
+        data = json.load(f)
+    return data
+
+
+@pytest.fixture
+def viewer_request_data_cookie(path_amazon_cloudfront: str) -> dict:
+    with open(f"{path_amazon_cloudfront}/viewer_request.example.cookie-ver.json", "r") as f:
         data = json.load(f)
     return data
 
@@ -94,10 +102,6 @@ class TestAmazonCloudFront:
         with pytest.raises(CloudFrontLambdaEdgeObjectNotFoundError) as e:
             lambda_edge.append_response_header(key="any", value="")
         assert str(e.value) == f"Not found [response]"
-        new_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK")
-        with pytest.raises(CloudFrontLambdaEdgeHeaderAppendNoEffectError) as e:
-            new_lambda_edge.append_response_header(key="any", value="")
-        assert str(e.value) == f"No effect to append any at [viewer-request]"
 
         new_lambda_edge = lambda_edge.append_request_header(key="X-Original-Header", value="data")
         assert new_lambda_edge.request.get_header("X-Original-Header").key == "X-Original-Header"
@@ -116,6 +120,96 @@ class TestAmazonCloudFront:
         assert redirect_lambda_edge.response.get_header("location").value == "https://example.com"
         assert redirect_lambda_edge.response.status == "307"
         assert redirect_lambda_edge.response.status_description == "Redirect"
+
+    def test_viewer_request_set_cookie_test(self, viewer_request_data: dict):
+        request = viewer_request_data["Records"][0]["cf"]
+        lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
+
+        # no effect to append headers
+        with pytest.raises(CloudFrontLambdaEdgeObjectNotFoundError) as e:
+            lambda_edge.append_response_set_cookie_header(key="example_key", value="example_value")
+        assert str(e.value) == f"Not found [response]"
+
+        # default-cookie
+        pseudo_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK!")
+        set_default_cookie_lambda_edge = pseudo_lambda_edge.append_response_set_cookie_header(
+            key="example_key", value="example_value"
+        )
+        assert set_default_cookie_lambda_edge.response.get_header("Set-Cookie").key == "Set-Cookie"
+        assert set_default_cookie_lambda_edge.response.get_header("set-cookie").key == "Set-Cookie"
+        assert (
+            set_default_cookie_lambda_edge.response.get_header("set-cookie").value
+            == "example_key=example_value; SameSite=Lax; Secure; HttpOnly"
+        )
+
+        # expires-cookie
+        pseudo_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK!")
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            pseudo_lambda_edge.append_response_set_cookie_header(
+                key="example_key", value="example_value", expires="invalid-time-format"
+            )
+        set_expires_cookie_lambda_edge = pseudo_lambda_edge.append_response_set_cookie_header(
+            key="example_key", value="example_value", expires="Thu, 01 Jan 1970 00:00:00 GMT"
+        )
+        assert set_expires_cookie_lambda_edge.response.get_header("Set-Cookie").key == "Set-Cookie"
+        assert set_expires_cookie_lambda_edge.response.get_header("set-cookie").key == "Set-Cookie"
+        assert (
+            set_expires_cookie_lambda_edge.response.get_header("set-cookie").value
+            == "example_key=example_value; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure; HttpOnly"
+        )
+        pseudo_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK!")
+        set_expires_cookie_lambda_edge_2 = pseudo_lambda_edge.append_response_set_cookie_header(
+            key="example_key", value="example_value", expires=datetime.fromtimestamp(0)
+        )
+        assert set_expires_cookie_lambda_edge_2.response.get_header("Set-Cookie").key == "Set-Cookie"
+        assert set_expires_cookie_lambda_edge_2.response.get_header("set-cookie").key == "Set-Cookie"
+        assert (
+            set_expires_cookie_lambda_edge_2.response.get_header("set-cookie").value
+            == "example_key=example_value; Expires=Thu, 01 Jan 1970 09:00:00 GMT; SameSite=Lax; Secure; HttpOnly"
+        )
+
+        # domain-cookie
+        pseudo_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK!")
+        set_domain_cookie_lambda_edge = pseudo_lambda_edge.append_response_set_cookie_header(
+            key="example_key", value="example_value", domain="example.com"
+        )
+        assert set_domain_cookie_lambda_edge.response.get_header("Set-Cookie").key == "Set-Cookie"
+        assert set_domain_cookie_lambda_edge.response.get_header("set-cookie").key == "Set-Cookie"
+        assert (
+            set_domain_cookie_lambda_edge.response.get_header("set-cookie").value
+            == "example_key=example_value; Domain=example.com; SameSite=Lax; Secure; HttpOnly"
+        )
+
+        # path-cookie
+        pseudo_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK!")
+        set_domain_cookie_lambda_edge = pseudo_lambda_edge.append_response_set_cookie_header(
+            key="example_key", value="example_value", path="/example"
+        )
+        assert set_domain_cookie_lambda_edge.response.get_header("Set-Cookie").key == "Set-Cookie"
+        assert set_domain_cookie_lambda_edge.response.get_header("set-cookie").key == "Set-Cookie"
+        assert (
+            set_domain_cookie_lambda_edge.response.get_header("set-cookie").value
+            == "example_key=example_value; Path=/example; SameSite=Lax; Secure; HttpOnly"
+        )
+
+    def test_viewer_request_get_cookies_none_test(self, viewer_request_data: dict):
+        request = viewer_request_data["Records"][0]["cf"]
+        lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
+
+        cookies = lambda_edge.request.get_cookies()
+        assert cookies is None
+
+    def test_viewer_request_get_cookies_test(self, viewer_request_data_cookie: dict):
+        request = viewer_request_data_cookie["Records"][0]["cf"]
+        lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
+
+        cookies = lambda_edge.request.get_cookies()
+        cookie_1 = [v for v in cookies if v.key == "example-key-1"][0]
+        assert cookie_1.key == "example-key-1"
+        assert cookie_1.value == "value1"
+        cookie_2 = [v for v in cookies if v.key == "example-key-2"][0]
+        assert cookie_2.key == "example-key-2"
+        assert cookie_2.value == "value2"
 
     def test_origin_request(self, origin_request_data: dict):
 
@@ -196,10 +290,6 @@ class TestAmazonCloudFront:
         with pytest.raises(CloudFrontLambdaEdgeObjectNotFoundError) as e:
             lambda_edge.append_response_header(key="any", value="")
         assert str(e.value) == f"Not found [response]"
-        new_lambda_edge = lambda_edge.add_pseudo_response(status="200", status_description="OK")
-        with pytest.raises(CloudFrontLambdaEdgeHeaderAppendNoEffectError) as e:
-            new_lambda_edge.append_response_header(key="any", value="")
-        assert str(e.value) == f"No effect to append any at [origin-request]"
 
         # headers to append
         new_lambda_edge = lambda_edge.append_request_header(key="X-Original-Header", value="data")
