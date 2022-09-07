@@ -182,6 +182,21 @@ class CloudFrontLambdaSetCookie:
 
 
 @dataclass(frozen=True)
+class CloudFrontLambdaCookie:
+    key: str
+    value: str
+
+    @staticmethod
+    def from_cookie_value(cookie_value: str) -> List["CloudFrontLambdaCookie"]:
+        result = []
+        cookies = cookie_value.split("; ")
+        for cookie in cookies:
+            key, value = cookie.split("=")
+            result.append(CloudFrontLambdaCookie(key=key, value=value))
+        return result
+
+
+@dataclass(frozen=True)
 class CloudFrontLambdaEdgeBody:
     input_truncated: bool = field(metadata={"readonly": True})
     action: str = field(metadata={"readonly": False})
