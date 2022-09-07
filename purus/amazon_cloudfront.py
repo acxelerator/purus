@@ -138,7 +138,7 @@ class CloudFrontLambdaEdgeHeader:
 
 
 @dataclass(frozen=True)
-class CloudFrontLambdaCookie:
+class CloudFrontLambdaSetCookie:
     key: str
     value: str
     expires: Optional[Union[str, datetime]] = None
@@ -445,7 +445,7 @@ class CloudFrontLambdaEdge:
     ) -> "CloudFrontLambdaEdge":
         if self.response is None:
             raise CloudFrontLambdaEdgeObjectNotFoundError(object_name="response")
-        cookie = CloudFrontLambdaCookie(
+        cookie = CloudFrontLambdaSetCookie(
             key=key,
             value=value,
             expires=expires,
