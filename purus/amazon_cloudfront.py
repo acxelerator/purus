@@ -400,7 +400,17 @@ class CloudFrontLambdaEdge:
     response: Optional[CloudFrontLambdaEdgeResponse]
 
     @staticmethod
-    def from_dict(data: dict):
+    def from_event(event: dict) -> "CloudFrontLambdaEdge":
+        if "Records" not in event:
+            raise CloudFrontLambdaEdgeError()
+        if len(event["Records"]) != 1:
+            raise CloudFrontLambdaEdgeError()
+        if "cf" not in event["Records"][0]:
+            raise CloudFrontLambdaEdgeError()
+        return CloudFrontLambdaEdge.from_dict(data=event["Records"][0]["cf"])
+
+    @staticmethod
+    def from_dict(data: dict) -> "CloudFrontLambdaEdge":
         response = data.get("response")
         return CloudFrontLambdaEdge(
             config=CloudFrontLambdaEdgeConfig.from_dict(data["config"]),
