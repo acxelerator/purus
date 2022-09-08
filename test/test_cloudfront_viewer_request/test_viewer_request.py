@@ -55,6 +55,9 @@ class TestCloudFrontViewerRequest:
         # check format() output
         assert request == lambda_edge.format()
 
+        # from_event()
+        _ = CloudFrontLambdaEdge.from_event(event=viewer_request_data)
+
     def test_viewer_request_header_test(self, viewer_request_data: dict):
         request = viewer_request_data["Records"][0]["cf"]
         lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
@@ -185,3 +188,13 @@ class TestCloudFrontViewerRequest:
         cookie_2 = [v for v in cookies if v.key == "example-key-2"][0]
         assert cookie_2.key == "example-key-2"
         assert cookie_2.value == "value2"
+
+    def test_error(self):
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            CloudFrontLambdaEdge.from_event(event={})
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            CloudFrontLambdaEdge.from_event(event={"Records": []})
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            CloudFrontLambdaEdge.from_event(event={"Records": ["v1", "v2"]})
+        with pytest.raises(CloudFrontLambdaEdgeError):
+            CloudFrontLambdaEdge.from_event(event={"Records": [{"not_cf": "v1"}]})
