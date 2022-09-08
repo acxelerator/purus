@@ -37,9 +37,8 @@ from purus.amazon_cloudfront import CloudFrontLambdaEdge
 
 # on viewer-request or origin-request
 def lambda_handler(event: dict, _):
-    data = event["Records"][0]["cf"]
     # load data
-    lambda_edge = CloudFrontLambdaEdge.from_dict(data=data)
+    lambda_edge = CloudFrontLambdaEdge.from_event(event=event)
     
     # return on error
     if some_error_occurred:
