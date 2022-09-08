@@ -1,11 +1,15 @@
 from dataclasses import dataclass, field, replace
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
 
-__all__ = ["CloudFrontLambdaEdge", "CloudFrontLambdaEdgeError"]
+from .errors import (
+    CloudFrontLambdaEdgeError,
+    CloudFrontLambdaEdgeHeaderAppendNoEffectError,
+    CloudFrontLambdaEdgeHeaderEditNotAllowedError,
+    CloudFrontLambdaEdgeObjectNotFoundError,
+)
 
-
-class CloudFrontLambdaEdgeError(Exception):
-    pass
+__all__ = ["CloudFrontLambdaEdge"]
 
 
 @dataclass(frozen=True)
@@ -134,6 +138,65 @@ class CloudFrontLambdaEdgeHeader:
 
 
 @dataclass(frozen=True)
+class CloudFrontLambdaSetCookie:
+    key: str
+    value: str
+    expires: Optional[Union[str, datetime]] = None
+    domain: Optional[str] = None
+    path: Optional[str] = None
+    same_site: str = "Lax"
+    secure: bool = True
+    http_only: bool = True
+
+    def __post_init__(self):
+        assert self.same_site in ["Lax", "Strict", "None"]
+        assert type(self.secure) is bool
+        assert type(self.http_only) is bool
+        if self.expires is not None:
+            assert type(self.expires) is str or type(self.expires) is datetime
+
+    def format_value(self) -> str:
+        value = f"{self.key}={self.value}"
+        if self.expires is not None:
+            gmt_format = "%a, %d %b %Y %H:%M:%S GMT"
+            if type(self.expires) is str:
+                try:
+                    _ = datetime.strptime(self.expires, gmt_format)
+                except ValueError as e:
+                    raise CloudFrontLambdaEdgeError() from e
+                value = f"{value}; Expires={self.expires}"
+            elif type(self.expires) is datetime:
+                value = f"{value}; Expires={self.expires.strftime(gmt_format)}"
+        if self.domain is not None:
+            value = f"{value}; Domain={self.domain}"
+        if self.path is not None:
+            value = f"{value}; Path={self.path}"
+        if self.same_site is not None:
+            value = f"{value}; SameSite={self.same_site}"
+        if self.secure:
+            value = f"{value}; Secure"
+        if self.http_only:
+            value = f"{value}; HttpOnly"
+
+        return value
+
+
+@dataclass(frozen=True)
+class CloudFrontLambdaCookie:
+    key: str
+    value: str
+
+    @staticmethod
+    def from_cookie_value(cookie_value: str) -> List["CloudFrontLambdaCookie"]:
+        result = []
+        cookies = cookie_value.split("; ")
+        for cookie in cookies:
+            key, value = cookie.split("=")
+            result.append(CloudFrontLambdaCookie(key=key, value=value))
+        return result
+
+
+@dataclass(frozen=True)
 class CloudFrontLambdaEdgeBody:
     input_truncated: bool = field(metadata={"readonly": True})
     action: str = field(metadata={"readonly": False})
@@ -241,24 +304,30 @@ class CloudFrontLambdaEdgeRequest:
                 return header
         return None
 
+    def get_cookies(self) -> Optional[List[CloudFrontLambdaCookie]]:
+        cookie_header = self.get_header(key="cookie")
+        if cookie_header is None:
+            return None
+        return CloudFrontLambdaCookie.from_cookie_value(cookie_value=cookie_header.value)
+
     def append_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeRequest":
         if event_type == "viewer-request":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_viewer_request(header_key=key):
-                raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
         elif event_type == "origin-request":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_origin_request(header_key=key):
-                raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
         else:
-            raise CloudFrontLambdaEdgeError()
+            raise CloudFrontLambdaEdgeHeaderAppendNoEffectError(header_key=key, event_type=event_type)
         self.headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
         return replace(self, headers=self.headers)
 
     def append_custom_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeRequest":
         if event_type == "origin-request":
             if CloudFrontLambdaEdgeHeader.check_allowed_custom_header_key(header_key=key):
-                raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
             if self.origin is None:
-                raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeObjectNotFoundError(object_name="origin")
             origin = self.origin.update_custom_header(key=key, value=value)
             return replace(self, origin=origin)
         return self
@@ -316,12 +385,10 @@ class CloudFrontLambdaEdgeResponse:
     def append_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeResponse":
         if event_type == "viewer-response":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_viewer_response(header_key=key):
-                raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
         elif event_type == "origin-response":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_origin_response(header_key=key):
-                raise CloudFrontLambdaEdgeError()
-        else:
-            raise CloudFrontLambdaEdgeError()
+                raise CloudFrontLambdaEdgeHeaderEditNotAllowedError(header_key=key, event_type=event_type)
         self.headers.append(CloudFrontLambdaEdgeHeader(key=key, value=value))
         return replace(self, headers=self.headers)
 
@@ -333,7 +400,17 @@ class CloudFrontLambdaEdge:
     response: Optional[CloudFrontLambdaEdgeResponse]
 
     @staticmethod
-    def from_dict(data: dict):
+    def from_event(event: dict) -> "CloudFrontLambdaEdge":
+        if "Records" not in event:
+            raise CloudFrontLambdaEdgeError()
+        if len(event["Records"]) != 1:
+            raise CloudFrontLambdaEdgeError()
+        if "cf" not in event["Records"][0]:
+            raise CloudFrontLambdaEdgeError()
+        return CloudFrontLambdaEdge.from_dict(data=event["Records"][0]["cf"])
+
+    @staticmethod
+    def from_dict(data: dict) -> "CloudFrontLambdaEdge":
         response = data.get("response")
         return CloudFrontLambdaEdge(
             config=CloudFrontLambdaEdgeConfig.from_dict(data["config"]),
@@ -370,8 +447,46 @@ class CloudFrontLambdaEdge:
         response = CloudFrontLambdaEdgeResponse(headers=[], status=status, status_description=status_description)
         return replace(self, response=response)
 
+    def add_pseudo_redirect_response(
+        self, status: str, status_description: str, location_url: str
+    ) -> "CloudFrontLambdaEdge":
+        response = CloudFrontLambdaEdgeResponse(
+            headers=[CloudFrontLambdaEdgeHeader(key="location", value=location_url)],
+            status=status,
+            status_description=status_description,
+        )
+        return replace(self, response=response)
+
     def append_response_header(self, key: str, value: str) -> "CloudFrontLambdaEdge":
         if self.response is None:
-            raise CloudFrontLambdaEdgeError()
+            raise CloudFrontLambdaEdgeObjectNotFoundError(object_name="response")
         response = self.response.append_header(key=key, value=value, event_type=self.config.event_type)
+        return replace(self, response=response)
+
+    def append_response_set_cookie_header(
+        self,
+        key: str,
+        value: str,
+        expires: Optional[Union[str, datetime]] = None,
+        domain: Optional[str] = None,
+        path: Optional[str] = None,
+        same_site: str = "Lax",
+        secure: bool = True,
+        http_only: bool = True,
+    ) -> "CloudFrontLambdaEdge":
+        if self.response is None:
+            raise CloudFrontLambdaEdgeObjectNotFoundError(object_name="response")
+        cookie = CloudFrontLambdaSetCookie(
+            key=key,
+            value=value,
+            expires=expires,
+            domain=domain,
+            path=path,
+            same_site=same_site,
+            secure=secure,
+            http_only=http_only,
+        )
+        response = self.response.append_header(
+            key="Set-Cookie", value=cookie.format_value(), event_type=self.config.event_type
+        )
         return replace(self, response=response)
