@@ -3,6 +3,9 @@ name: Upload Python Package
 on:
   release:
     types: [created]
+  workflow_dispatch:
+    branches:
+      - main
 
 jobs:
   deploy:
@@ -21,7 +24,7 @@ jobs:
         echo "$HOME/.poetry/bin" >> $GITHUB_PATH
     - name: Build and Publish
       env:
-        TWINE_USERNAME: ${{ secrets.PYPI_TOKEN }}
+        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
       run: |
         poetry build
         poetry publish
