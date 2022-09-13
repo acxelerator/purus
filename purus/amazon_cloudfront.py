@@ -310,6 +310,12 @@ class CloudFrontLambdaEdgeRequest:
             return None
         return CloudFrontLambdaCookie.from_cookie_value(cookie_value=cookie_header.value)
 
+    def get_cookies_as_dict(self) -> Optional[Dict[str, str]]:
+        cookies = self.get_cookies()
+        if cookies is None:
+            return None
+        return {c.key: c.value for c in cookies}
+
     def append_header(self, key: str, value: str, event_type: str) -> "CloudFrontLambdaEdgeRequest":
         if event_type == "viewer-request":
             if CloudFrontLambdaEdgeHeader.check_read_only_header_in_viewer_request(header_key=key):
