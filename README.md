@@ -40,6 +40,10 @@ def lambda_handler(event: dict, _):
     # load data
     lambda_edge = CloudFrontLambdaEdge.from_event(event=event)
     
+    # get cookies
+    cookies = lambda_edge.request.get_cookies()
+    cookies_dict = lambda_edge.request.get_cookies_as_dict()
+
     # return on error
     if some_error_occurred:
         pseudo_payload = lambda_edge.add_pseudo_response(
