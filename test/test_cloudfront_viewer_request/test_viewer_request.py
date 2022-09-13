@@ -177,6 +177,9 @@ class TestCloudFrontViewerRequest:
         cookies = lambda_edge.request.get_cookies()
         assert cookies is None
 
+        cookies_dict = lambda_edge.request.get_cookies_as_dict()
+        assert cookies_dict is None
+
     def test_viewer_request_get_cookies_test(self, viewer_request_data_cookie: dict):
         request = viewer_request_data_cookie["Records"][0]["cf"]
         lambda_edge = CloudFrontLambdaEdge.from_dict(data=request)
@@ -188,6 +191,10 @@ class TestCloudFrontViewerRequest:
         cookie_2 = [v for v in cookies if v.key == "example-key-2"][0]
         assert cookie_2.key == "example-key-2"
         assert cookie_2.value == "value2"
+
+        cookies_dict = lambda_edge.request.get_cookies_as_dict()
+        assert cookies_dict["example-key-1"] == "value1"
+        assert cookies_dict["example-key-2"] == "value2"
 
     def test_error(self):
         with pytest.raises(CloudFrontLambdaEdgeError):
